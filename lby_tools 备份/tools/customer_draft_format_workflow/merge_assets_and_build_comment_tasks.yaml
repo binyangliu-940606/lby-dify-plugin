@@ -1,0 +1,28 @@
+identity:
+  name: "merge_assets_and_build_comment_tasks"
+  author: "lby"
+  label:
+    en_US: "整合所有信息与批注"
+    zh_Hans: "整合所有信息与批注"
+    pt_BR: "merge_assets_and_build_comment_tasks"
+description:
+  human:
+    en_US: "整合所有信息与批注"
+    zh_Hans: "整合所有信息与批注"
+    pt_BR: "merge_assets_and_build_comment_tasks"
+  llm: "merge_assets_and_build_comment_tasks"
+parameters:
+  - name: payload_json
+    type: string
+    required: true
+    label:
+      en_US: payload_json
+      zh_Hans: json数据
+    human_description:
+      en_US: "payload_json"
+      zh_Hans: "json数据"
+    llm_description: "payload_json"
+    form: llm
+extra:
+  python:
+    source: tools/customer_draft_format_workflow/merge_assets_and_build_comment_tasks.py

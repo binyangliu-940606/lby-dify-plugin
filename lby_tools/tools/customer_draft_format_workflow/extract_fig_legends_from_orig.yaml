@@ -1,0 +1,28 @@
+identity:
+  name: "extract_fig_legends_from_orig"
+  author: "lby"
+  label:
+    en_US: "获取图片缺失信息"
+    zh_Hans: "获取图片缺失信息"
+    pt_BR: "extract_fig_legends_from_orig"
+description:
+  human:
+    en_US: "获取图片缺失信息"
+    zh_Hans: "获取图片缺失信息"
+    pt_BR: "extract_fig_legends_from_orig"
+  llm: "extract_fig_legends_from_orig"
+parameters:
+  - name: payload_json
+    type: string
+    required: true
+    label:
+      en_US: payload_json
+      zh_Hans: 参数信息
+    human_description:
+      en_US: "payload_json"
+      zh_Hans: "参数信息"
+    llm_description: "payload_json"
+    form: llm
+extra:
+  python:
+    source: tools/customer_draft_format_workflow/extract_fig_legends_from_orig.py

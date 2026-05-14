@@ -1,0 +1,36 @@
+identity:
+  author: "lby"
+  name: "lby_tools"
+  label:
+    en_US: "lby_tools"
+    zh_Hans: "lby_tools"
+    pt_BR: "lby_tools"
+    ja_JP: "lby_tools"
+  description:
+    en_US: "lby tools"
+    zh_Hans: "lby tools"
+    pt_BR: "lby tools"
+    ja_JP: "lby tools"
+  icon: "icon.svg"
+  tags:
+        - search
+tools:
+  - tools/word_rm_revision_checked.yaml
+  - tools/replace_author_info.yaml
+  - tools/get_xiuding_doc.yaml
+  - tools/check_list_info.yaml
+  - tools/customer_draft_format_workflow/prepare_workspace.yaml
+  - tools/customer_draft_format_workflow/extract_fig_legends_from_orig.yaml
+  - tools/customer_draft_format_workflow/extract_tables_from_orig_ooxml.yaml
+  - tools/customer_draft_format_workflow/scan_table_attachments_index.yaml
+  - tools/customer_draft_format_workflow/extract_tables_from_attachments_by_plan.yaml
+  - tools/customer_draft_format_workflow/scan_figure_attachments_index.yaml
+  - tools/customer_draft_format_workflow/merge_assets_and_build_comment_tasks.yaml
+  - tools/customer_draft_format_workflow/extract_docx_paras_and_tables_ooxml.yaml
+  - tools/customer_draft_format_workflow/extract_reference_section_and_citations.yaml
+  - tools/AiRewriteRemoveTraceWorkflow/parse_docx_from_url.yaml
+  - tools/AiRewriteRemoveTraceWorkflow/apply_rewrites_to_docx.yaml
+  - tools/simulated_data_matrix_workflow/get_recompute.yaml
+extra:
+  python:
+    source: provider/lby_tools.py

@@ -1,0 +1,60 @@
+identity:
+  name: "word_rm_revision_checked"
+  author: "lby"
+  label:
+    en_US: "默认接受删除修订"
+    zh_Hans: "默认接受删除修订 v004"
+description:
+  human:
+    en_US: "默认接受删除修订"
+    zh_Hans: "默认接受删除修订"
+  llm: "word_rm_revision_checked"
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: url
+      zh_Hans: 文档url
+    human_description:
+      en_US: "url"
+      zh_Hans: "url"
+    llm_description: "url"
+    form: llm
+  - name: color
+    type: string
+    required: true
+    label:
+      en_US: color
+      zh_Hans: 痕迹颜色
+    human_description:
+      en_US: "color"
+      zh_Hans: "color"
+    llm_description: "color"
+    form: llm
+  - name: file_name
+    type: string
+    required: true
+    label:
+      en_US: file_name
+      zh_Hans: 文档名称
+    human_description:
+      en_US: "file_name"
+      zh_Hans: "文档名称"
+    llm_description: "file_name"
+    form: llm
+output_schema:
+  type: object
+  properties:
+    profile:
+      type: object
+      properties:
+        interests:
+          type: array
+          items:
+            type: string
+        location:
+          type: string
+extra:
+  python:
+    source: tools/word_rm_revision_checked.py

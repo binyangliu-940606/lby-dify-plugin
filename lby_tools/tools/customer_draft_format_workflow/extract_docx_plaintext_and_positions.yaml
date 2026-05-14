@@ -1,0 +1,28 @@
+identity:
+  name: "extract_docx_plaintext_and_positions"
+  author: "lby"
+  label:
+    en_US: "次稿文件分段"
+    zh_Hans: "次稿文件分段"
+    pt_BR: "extract_docx_plaintext_and_positions"
+description:
+  human:
+    en_US: "次稿文件分段"
+    zh_Hans: "次稿文件分段"
+    pt_BR: "extract_docx_plaintext_and_positions"
+  llm: "extract_docx_plaintext_and_positions"
+parameters:
+  - name: payload_json
+    type: string
+    required: true
+    label:
+      en_US: payload_json
+      zh_Hans: 文档url
+    human_description:
+      en_US: "payload_json"
+      zh_Hans: "文档url"
+    llm_description: "payload_json"
+    form: llm
+extra:
+  python:
+    source: tools/customer_draft_format_workflow/extract_docx_plaintext_and_positions.py

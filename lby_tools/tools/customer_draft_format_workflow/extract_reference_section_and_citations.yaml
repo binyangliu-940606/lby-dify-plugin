@@ -1,0 +1,28 @@
+identity:
+  name: "extract_reference_section_and_citations"
+  author: "lby"
+  label:
+    en_US: "获取文献引用"
+    zh_Hans: "获取文献引用"
+    pt_BR: "extract_reference_section_and_citations"
+description:
+  human:
+    en_US: "获取文献引用"
+    zh_Hans: "获取文献引用"
+    pt_BR: "extract_reference_section_and_citations"
+  llm: "extract_reference_section_and_citations"
+parameters:
+  - name: docx_path
+    type: string
+    required: true
+    label:
+      en_US: docx_path
+      zh_Hans: 文档url
+    human_description:
+      en_US: "docx_path"
+      zh_Hans: "文档url"
+    llm_description: "docx_path"
+    form: llm
+extra:
+  python:
+    source: tools/customer_draft_format_workflow/extract_reference_section_and_citations.py

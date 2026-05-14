@@ -1,0 +1,83 @@
+identity:
+  name: "check_list_info"
+  author: "lby"
+  label:
+    en_US: "检查列表顺序位置"
+    zh_Hans: "检查列表顺序位置"
+    pt_BR: "check_list_info"
+description:
+  human:
+    en_US: "检查列表顺序位置"
+    zh_Hans: "检查列表顺序位置"
+    pt_BR: "check_list_info"
+  llm: "check_list_info"
+parameters:
+  - name: old_file_url
+    type: string
+    required: true
+    label:
+      en_US: old_file_url
+      zh_Hans: 文档url
+    human_description:
+      en_US: "old_file_url"
+      zh_Hans: "文档url"
+    llm_description: "old_file_url"
+    form: llm
+  - name: file_name
+    type: string
+    required: true
+    label:
+      en_US: file_name
+      zh_Hans: 文档名称
+    human_description:
+      en_US: "file_name"
+      zh_Hans: "文档名称"
+    llm_description: "file_name"
+    form: llm
+  - name: verify_figure_list
+    type: string
+    required: true
+    label:
+      en_US: verify_figure_list
+      zh_Hans: 用于验证的图片列表
+    human_description:
+      en_US: "verify_figure_list"
+      zh_Hans: "用于验证的图片列表"
+    llm_description: "verify_figure_list"
+    form: llm
+  - name: checked_figures 
+    type: string
+    required: true
+    label:
+      en_US: checked_figures
+      zh_Hans: 被验证的图片列表
+    human_description:
+      en_US: "checked_figures"
+      zh_Hans: "被验证的图片列表"
+    llm_description: "checked_figures"
+    form: llm
+  - name: verify_table_list
+    type: string
+    required: true
+    label:
+      en_US: verify_table_list
+      zh_Hans: 用于验证的表格列表
+    human_description:
+      en_US: "verify_table_list"
+      zh_Hans: "用于验证的表格列表"
+    llm_description: "verify_table_list"
+    form: llm
+  - name: checked_tables 
+    type: string
+    required: true
+    label:
+      en_US: checked_tables
+      zh_Hans: 被验证的表格列表
+    human_description:
+      en_US: "checked_tables"
+      zh_Hans: "被验证的表格列表"
+    llm_description: "checked_tables"
+    form: llm
+extra:
+  python:
+    source: tools/check_list_info.py

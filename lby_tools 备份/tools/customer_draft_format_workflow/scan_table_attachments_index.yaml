@@ -1,0 +1,28 @@
+identity:
+  name: "scan_table_attachments_index"
+  author: "lby"
+  label:
+    en_US: "从zip中提取匹配表格索引"
+    zh_Hans: "从zip中提取匹配表格索引"
+    pt_BR: "scan_table_attachments_index"
+description:
+  human:
+    en_US: "从zip中提取匹配表格索引"
+    zh_Hans: "从zip中提取匹配表格索引"
+    pt_BR: "scan_table_attachments_index"
+  llm: "scan_table_attachments_index"
+parameters:
+  - name: payload_json
+    type: string
+    required: true
+    label:
+      en_US: payload_json
+      zh_Hans: 表格信息
+    human_description:
+      en_US: "payload_json"
+      zh_Hans: "表格信息"
+    llm_description: "payload_json"
+    form: llm
+extra:
+  python:
+    source: tools/customer_draft_format_workflow/scan_table_attachments_index.py

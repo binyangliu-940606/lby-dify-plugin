@@ -1,0 +1,28 @@
+identity:
+  name: "extract_tables_from_attachments_by_plan"
+  author: "lby"
+  label:
+    en_US: "获取表内容和缺失信息"
+    zh_Hans: "获取表内容和缺失信息"
+    pt_BR: "extract_tables_from_attachments_by_plan"
+description:
+  human:
+    en_US: "获取表内容和缺失信息"
+    zh_Hans: "获取表内容和缺失信息"
+    pt_BR: "extract_tables_from_attachments_by_plan"
+  llm: "extract_tables_from_attachments_by_plan"
+parameters:
+  - name: payload_json
+    type: string
+    required: true
+    label:
+      en_US: payload_json
+      zh_Hans: 参数信息
+    human_description:
+      en_US: "payload_json"
+      zh_Hans: "参数信息"
+    llm_description: "payload_json"
+    form: llm
+extra:
+  python:
+    source: tools/customer_draft_format_workflow/extract_tables_from_attachments_by_plan.py

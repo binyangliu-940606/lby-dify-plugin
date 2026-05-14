@@ -1,0 +1,28 @@
+identity:
+  name: "prepare_workspace"
+  author: "lby"
+  label:
+    en_US: "把文件保存到本地统一路径01"
+    zh_Hans: "把文件保存到本地统一路径01"
+    pt_BR: "prepare_workspace"
+description:
+  human:
+    en_US: "把文件保存到本地统一路径01"
+    zh_Hans: "把文件保存到本地统一路径01"
+    pt_BR: "prepare_workspace"
+  llm: "prepare_workspace"
+parameters:
+  - name: payload_json
+    type: string
+    required: true
+    label:
+      en_US: payload_json
+      zh_Hans: json信息
+    human_description:
+      en_US: "payload_json"
+      zh_Hans: "json信息"
+    llm_description: "payload_json"
+    form: llm
+extra:
+  python:
+    source: tools/customer_draft_format_workflow/prepare_workspace.py

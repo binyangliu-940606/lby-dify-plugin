@@ -1,0 +1,28 @@
+identity:
+  name: "extract_docx_paras_and_tables_ooxml"
+  author: "lby"
+  label:
+    en_US: "原稿表格识别与缺失判定"
+    zh_Hans: "原稿表格识别与缺失判定"
+    pt_BR: "extract_docx_paras_and_tables_ooxml"
+description:
+  human:
+    en_US: "原稿表格识别与缺失判定"
+    zh_Hans: "原稿表格识别与缺失判定"
+    pt_BR: "extract_docx_paras_and_tables_ooxml"
+  llm: "extract_docx_paras_and_tables_ooxml"
+parameters:
+  - name: docx_path
+    type: string
+    required: true
+    label:
+      en_US: docx_path
+      zh_Hans: 文档url
+    human_description:
+      en_US: "docx_path"
+      zh_Hans: "文档url"
+    llm_description: "docx_path"
+    form: llm
+extra:
+  python:
+    source: tools/customer_draft_format_workflow/extract_docx_paras_and_tables_ooxml.py
