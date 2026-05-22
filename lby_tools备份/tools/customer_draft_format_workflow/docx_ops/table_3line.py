@@ -93,6 +93,35 @@ def _clear_table_borders(tbl):
                     tcBorders.append(e)
                 _set_border_nil(e)
 
+# def set_table_three_line(tbl):
+#     if tbl is None:
+#         return
+#     if len(tbl.rows) == 0 or len(tbl.columns) == 0:
+#         return
+
+#     _clear_table_borders(tbl)
+
+#     tblPr = tbl._tbl.tblPr
+#     tblBorders = tblPr.find(qn("w:tblBorders"))
+#     top = tblBorders.find(qn("w:top"))
+#     bottom = tblBorders.find(qn("w:bottom"))
+#     _set_border_single(top, sz="8")
+#     _set_border_single(bottom, sz="8")
+
+#     first_row = tbl.rows[0]
+#     for cell in first_row.cells:
+#         tcPr = cell._tc.get_or_add_tcPr()
+#         tcBorders = tcPr.find(qn("w:tcBorders"))
+#         if tcBorders is None:
+#             tcBorders = OxmlElement("w:tcBorders")
+#             tcPr.append(tcBorders)
+
+#         btm = tcBorders.find(qn("w:bottom"))
+#         if btm is None:
+#             btm = OxmlElement("w:bottom")
+#             tcBorders.append(btm)
+#         _set_border_single(btm, sz="8")
+
 def set_table_three_line(tbl):
     if tbl is None:
         return
@@ -101,6 +130,7 @@ def set_table_three_line(tbl):
 
     _clear_table_borders(tbl)
 
+    # 1) 表格级别：上、下边框
     tblPr = tbl._tbl.tblPr
     tblBorders = tblPr.find(qn("w:tblBorders"))
     top = tblBorders.find(qn("w:top"))
@@ -108,6 +138,7 @@ def set_table_three_line(tbl):
     _set_border_single(top, sz="8")
     _set_border_single(bottom, sz="8")
 
+    # 2) 单元格级别兜底：第一行 top + bottom（中间线）
     first_row = tbl.rows[0]
     for cell in first_row.cells:
         tcPr = cell._tc.get_or_add_tcPr()
@@ -116,12 +147,34 @@ def set_table_three_line(tbl):
             tcBorders = OxmlElement("w:tcBorders")
             tcPr.append(tcBorders)
 
-        btm = tcBorders.find(qn("w:bottom"))
-        if btm is None:
-            btm = OxmlElement("w:bottom")
-            tcBorders.append(btm)
-        _set_border_single(btm, sz="8")
+        # 顶线兜底（新增）
+        t = tcBorders.find(qn("w:top"))
+        if t is None:
+            t = OxmlElement("w:top")
+            tcBorders.append(t)
+        _set_border_single(t, sz="8")
 
+        # 表头下方的中间线（你原来就有）
+        b = tcBorders.find(qn("w:bottom"))
+        if b is None:
+            b = OxmlElement("w:bottom")
+            tcBorders.append(b)
+        _set_border_single(b, sz="8")
+
+    # 3) 单元格级别兜底：最后一行 bottom（新增）
+    last_row = tbl.rows[-1]
+    for cell in last_row.cells:
+        tcPr = cell._tc.get_or_add_tcPr()
+        tcBorders = tcPr.find(qn("w:tcBorders"))
+        if tcBorders is None:
+            tcBorders = OxmlElement("w:tcBorders")
+            tcPr.append(tcBorders)
+
+        b = tcBorders.find(qn("w:bottom"))
+        if b is None:
+            b = OxmlElement("w:bottom")
+            tcBorders.append(b)
+        _set_border_single(b, sz="8")
 
 # def add_table_with_title_note(doc: Document, title: str, note: str, grid: list, max_rows: int = 60, max_cols: int = 20):
 #     """

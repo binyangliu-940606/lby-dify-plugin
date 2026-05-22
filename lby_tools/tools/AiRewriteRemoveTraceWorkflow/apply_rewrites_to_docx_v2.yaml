@@ -1,0 +1,28 @@
+identity:
+  name: "apply_rewrites_to_docx_v2"
+  author: "lby"
+  label:
+    en_US: "将降重后内容写回v2"
+    zh_Hans: "将降重后内容写回v2"
+    pt_BR: "apply_rewrites_to_docx_v2"
+description:
+  human:
+    en_US: "将降重后内容写回v2"
+    zh_Hans: "将降重后内容写回v2"
+    pt_BR: "apply_rewrites_to_docx_v2"
+  llm: "apply_rewrites_to_docx_v2"
+parameters:
+  - name: payload_json
+    type: string
+    required: true
+    label:
+      en_US: payload_json
+      zh_Hans: 参数信息
+    human_description:
+      en_US: "payload_json"
+      zh_Hans: "参数信息"
+    llm_description: "payload_json"
+    form: llm
+extra:
+  python:
+    source: tools/AiRewriteRemoveTraceWorkflow/apply_rewrites_to_docx_v2.py

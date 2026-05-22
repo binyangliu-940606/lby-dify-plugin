@@ -6,7 +6,7 @@ import re
 import shutil
 
 from typing import Dict, Any, List, Tuple
-from collections.abc import Generator
+from collections import OrderedDict
 
 from docx import Document
 from docx.shared import Inches
@@ -21,6 +21,7 @@ from .docx_ops.remove_tables_ooxml import remove_table_blocks
 from .docx_ops.comments_core import create_comment_only
 from .docx_ops.comments_anchor import add_comment_precise
 from .docx_ops.table_3line import add_table_with_title_note, add_page_break,set_doc_defaults
+
 
 
 # from dify_plugin import Tool
@@ -144,6 +145,62 @@ def _style_paragraph_center_5(p: Paragraph):
 # ========================
 # 1) normalize_pairs 清洗 + 子图兜底
 # ========================
+def split_citation_numbers(cit: str) -> List[int]:
+    """
+    输入形如: [1/2/100], [1,2,3], [1-3], 【1，2；3-5/7】...
+    输出数字列表（仅“切割”，不展开区间：1-3 -> [1,3]）
+    """
+    inner = re.sub(r'^\s*(?:\[|【)\s*|\s*(?:\]|】)\s*$', '', cit)
+    nums = [int(x) for x in re.split(r"\D+", inner) if x]
+    return nums
+
+def _extract_pmid_from_replace(repl: str) -> str:
+    # 支持 "(PMID: 26521728)" / "PMID:26521728" / "26521728" 等
+    m = re.search(r"\bPMID\s*:\s*(\d+)\b", repl, flags=re.I)
+    if m:
+        return m.group(1)
+    m = re.search(r"\b(\d{6,})\b", repl)  # 兜底：取一个较长数字
+    return m.group(1) if m else ""
+
+def merge_citation_replacements(items: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    """
+    将形如:
+      {'find': '[100,39, 40]', 'idx': 39, 'kind': 'pmid', 'replace': '(PMID: 26521728)'}
+    合并为:
+      {'kind': 'pmid', 'find': '[100,39, 40]', 'replace': '(100,PMID: 26521728,35281931)'}
+    规则：
+    - 按 (kind, find) 分组
+    - find 中的数字序列按原顺序输出
+    - 若某个数字 = idx 且有 replace，则用 "PMID: xxxx" 替换该数字
+    - 若某个数字找不到匹配 idx，则原样输出数字（不加 PMID）
+    """
+    # (kind, find) -> {idx -> pmid}
+    group_maps: "OrderedDict[Tuple[str,str], Dict[int,str]]" = OrderedDict()
+    for it in items:
+        key = (it["kind"], it["find"])
+        m = group_maps.setdefault(key, {})
+        pmid = _extract_pmid_from_replace(it.get("replace", ""))
+        if pmid:
+            m[int(it["idx"])] = pmid
+
+    out: List[Dict[str, str]] = []
+    for (kind, find), idx2pmid in group_maps.items():
+        nums = split_citation_numbers(find)
+
+        parts: List[str] = []
+        for n in nums:
+            if n in idx2pmid:
+                parts.append(f"PMID: {idx2pmid[n]}")
+            else:
+                parts.append(str(n))
+
+        out.append({
+            "kind": kind,
+            "find": find,
+            "replace": f"({';'.join(parts)})"
+        })
+    return out
+
 def _normalize_pairs_sanitize(normalize_pairs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     清洗 normalize_pairs（查找/替换对）：
@@ -155,41 +212,53 @@ def _normalize_pairs_sanitize(normalize_pairs: List[Dict[str, Any]]) -> List[Dic
     out: List[Dict[str, Any]] = []
     seen = set()
 
+    pmid_list = []
     for pair in normalize_pairs or []:
         if not isinstance(pair, dict):
             continue
 
         kind = pair.get("kind", "unknown")
-        fval = pair.get("find")
-        rval = pair.get("replace")
+        if kind == 'pmid':
+            pmid_list.append(pair)
 
-        # replace 可能是 list：取第一个非空字符串
-        if isinstance(rval, list):
-            rval = next((x for x in rval if isinstance(x, str) and x.strip()), "")
-        if not isinstance(rval, str):
-            rval = "" if rval is None else str(rval)
-        rval = rval.strip()
-        # replace 为空则跳过
-        if not rval:
+    out.extend(merge_citation_replacements(pmid_list))
+
+    for pair in normalize_pairs or []:
+        if not isinstance(pair, dict):
             continue
 
-        # find 可能是 list 或单字符串：统一到 finds 列表
-        finds: List[str] = []
-        if isinstance(fval, list):
-            finds = [x.strip() for x in fval if isinstance(x, str) and x.strip()]
-        elif isinstance(fval, str):
-            if fval.strip():
-                finds = [fval.strip()]
-        else:
-            continue
+        kind = pair.get("kind", "unknown")
+        if kind != 'pmid':
+            fval = pair.get("find")
+            rval = pair.get("replace")
 
-        # 展开并去重
-        for f in finds:
-            key = (kind, f, rval)
-            if key in seen:
+            # replace 可能是 list：取第一个非空字符串
+            if isinstance(rval, list):
+                rval = next((x for x in rval if isinstance(x, str) and x.strip()), "")
+            if not isinstance(rval, str):
+                rval = "" if rval is None else str(rval)
+            rval = rval.strip()
+            # replace 为空则跳过
+            if not rval:
                 continue
-            seen.add(key)
-            out.append({"kind": kind, "find": f, "replace": rval})
+
+            # find 可能是 list 或单字符串：统一到 finds 列表
+            finds: List[str] = []
+            if isinstance(fval, list):
+                finds = [x.strip() for x in fval if isinstance(x, str) and x.strip()]
+            elif isinstance(fval, str):
+                if fval.strip():
+                    finds = [fval.strip()]
+            else:
+                continue
+
+            # 展开并去重
+            for f in finds:
+                key = (kind, f, rval)
+                if key in seen:
+                    continue
+                seen.add(key)
+                out.append({"kind": kind, "find": f, "replace": rval})
 
     # 长串优先替换，减少替换互相干扰
     out.sort(key=lambda x: len(x["find"]), reverse=True)
@@ -270,6 +339,39 @@ def _apply_normalization_replacements(docx_in: str, docx_out: str, normalize_pai
 # ========================
 # 3) 插入段落/图片
 # ========================
+def _insert_paragraph_after_title(doc: Document, after_p_index: int, text: str, *, center: bool = False, style5: bool = False) -> int:
+    """
+    在指定段落索引 after_p_index 之后插入新段落，并返回新段落索引（after_p_index+1）。
+    可选：
+    - center：段落居中
+    - style5：应用“居中+五号+宋体/Times New Roman”的统一样式
+    """
+    after_p = doc.paragraphs[after_p_index]
+    new_p = doc.add_paragraph(text)
+    if center:
+        new_p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    _move_paragraph_after(new_p, after_p)
+    if style5:
+        # _style_paragraph_center_5(new_p)
+        #  """
+        # 将段落设置为：
+        # - 居中
+        # - 五号字（10.5pt）
+        # - 西文 Times New Roman
+        # - 中文宋体（eastAsia）
+        # 适用于图题、图注等格式统一。
+        # """
+        for run in new_p.runs:
+            run.font.size = Pt(10.5)  # 五号
+            run.font.bold = True
+            run.font.name = "Times New Roman"
+            try:
+                # 设置中文字体（eastAsia）为宋体，避免中文显示不一致
+                run._element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
+            except Exception:
+                pass
+    return after_p_index + 1
+
 def _insert_paragraph_after(doc: Document, after_p_index: int, text: str, *, center: bool = False, style5: bool = False) -> int:
     """
     在指定段落索引 after_p_index 之后插入新段落，并返回新段落索引（after_p_index+1）。
@@ -280,10 +382,18 @@ def _insert_paragraph_after(doc: Document, after_p_index: int, text: str, *, cen
     after_p = doc.paragraphs[after_p_index]
     new_p = doc.add_paragraph(text)
     if center:
-        new_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        new_p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     _move_paragraph_after(new_p, after_p)
     if style5:
-        _style_paragraph_center_5(new_p)
+        # _style_paragraph_center_5(new_p)
+        for run in new_p.runs:
+            run.font.size = Pt(10.5)  # 五号
+            run.font.name = "Times New Roman"
+            try:
+                # 设置中文字体（eastAsia）为宋体，避免中文显示不一致
+                run._element.rPr.rFonts.set(qn("w:eastAsia"), "宋体")
+            except Exception:
+                pass
     return after_p_index + 1
 
 
@@ -349,11 +459,46 @@ def _insert_picture_after(doc: Document, after_p_index: int, image_path: str, wo
     _move_paragraph_after(p_pic, after_p)
     _style_paragraph_center_5(p_pic)
 
+
+    def normalize_image_for_docx(src_path: str) -> str:
+        # 生成一个“确定可被python-docx识别”的文件
+        dst_path = os.path.splitext(src_path)[0] + ".__normalized__.jpg"
+
+        with Image.open(src_path) as im:
+            # 有些图片是RGBA/LA/P，先转成RGB
+            if im.mode not in ("RGB", "L"):
+                im = im.convert("RGB")
+            elif im.mode == "L":
+                # 灰度也可以直接保存成JPEG，这里转RGB更稳
+                im = im.convert("RGB")
+
+            # 重新编码成标准JPEG
+            im.save(dst_path, format="JPEG", quality=95, optimize=True)
+
+        return dst_path
+
+    # try:
+    #     run = p_pic.add_run()
+    #     run.add_picture(ins_path, width=Inches(width_inch))
+    #     return after_p_index + 1, True, ""
+    # except Exception as e:
+    #     return after_p_index, False, f"add_picture_failed: {e}"
+    
+
     try:
         run = p_pic.add_run()
         run.add_picture(ins_path, width=Inches(width_inch))
         return after_p_index + 1, True, ""
     except Exception as e:
+        # 如果是识别失败，尝试重编码再插入
+        if "UnrecognizedImageError" in type(e).__name__ or "UnrecognizedImageError" in str(e):
+            try:
+                fixed = normalize_image_for_docx(ins_path)
+                run = p_pic.add_run()
+                run.add_picture(fixed, width=Inches(width_inch))
+                return after_p_index + 1, True, ""
+            except Exception as e2:
+                return after_p_index, False, f"add_picture_failed_after_normalize: {e2}"
         return after_p_index, False, f"add_picture_failed: {e}"
 
 
@@ -394,10 +539,11 @@ def _merge_subfigure_captions(items: List[Tuple[str, Dict[str, Any]]]) -> str:
         m = re.match(r"^(Figure\s+S?\d+)([A-Z])$", fk.strip())
         if m:
             letter = m.group(2)
-            parts.append(f"{letter}. {cap}")
+            parts.append(f"({letter}) {cap}")
         else:
             parts.append(cap)
-    return " ".join(parts)
+    parts = " ".join(parts)
+    return f'注: {parts}'
 
 
 def _insert_main_figure_block_after_paragraph(
@@ -433,12 +579,15 @@ def _insert_main_figure_block_after_paragraph(
     # 2) 标题（居中+五号）
     # 你如果要严格 "Figure 10.TSNE..."（无空格），用 f"{main_fk}.{title}"
     title_line = f"{main_fk}. {title}".strip() if title else f"{main_fk}."
-    cur = _insert_paragraph_after(doc, cur, title_line, center=True, style5=True)
+    cur = _insert_paragraph_after_title(doc, cur, title_line, center=True, style5=True)
 
     # 3) 合并图注（居中+五号）
     if merged_caption:
         cur = _insert_paragraph_after(doc, cur, merged_caption, center=True, style5=True)
 
+    # 4) （新增）空一行：在图注后再插入一个空段落
+    cur = _insert_paragraph_after(doc, cur, "", center=False, style5=False)
+    
     return result
 
 
@@ -602,9 +751,9 @@ def apply_all_changes(
     final_docx_path = os.path.join(work_dir, "Final.docx")
 
     # Table 输出
-    table_docx_path = os.path.join(work_dir, "Table.docx")
+    table_docx_path = os.path.join(work_dir, "Tables.docx")
     # Figure 资源目录
-    final_figure_dir = os.path.join(work_dir, "Figure")
+    final_figure_dir = os.path.join(work_dir, "Figures")
     _ensure_dir(final_figure_dir)
 
     # 1) normalize_pairs 清洗
@@ -617,46 +766,266 @@ def apply_all_changes(
     # 3) 删除表块（正文中移除表格，表格另生成 Table.docx）
     remove_table_blocks(step1_norm, step2_no_tables)
 
-    # 4) 插入 Figure 块：按主图聚合（图片只一次 + 图注合并）
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # # 4) 插入 Figure 块：按主图聚合（图片只一次 + 图注合并）
+    # doc2 = Document(step2_no_tables)
+
+    # # 将 Figure 资产按主图分组
+    # groups = _group_fig_assets_by_main(fig_assets or {})
+
+    # # 找每个主图在文中“首次出现段落位置”：取其所有子图 key 命中的最小段落号
+    # first_pos_main: Dict[str, int] = {}
+    # for main_fk, items in groups.items():
+    #     best = None
+    #     for fk, _asset in items:
+    #         # fk 多为 Figure 10A，不需要(?![A-Z])；但保留原逻辑兼容无后缀的 Figure 10
+    #         if re.match(r"(?i)^Figure\s+S?\d+$", fk):
+    #             pat = re.compile(re.escape(fk) + r"(?![A-Z])")
+    #         else:
+    #             pat = re.compile(re.escape(fk))
+
+    #         # 从头扫描段落，找到首次出现的位置
+    #         for p_i, p in enumerate(doc2.paragraphs):
+    #             t = p.text or ""
+    #             if pat.search(t):
+    #                 best = p_i if best is None else min(best, p_i)
+    #                 break
+    #     if best is not None:
+    #         first_pos_main[main_fk] = best
+
+    # # 生成插入任务列表：需要插入的主图（已存在于 sub 的则跳过）
+    # insert_jobs: List[Tuple[int, str]] = []
+    # for main_fk, p_i in first_pos_main.items():
+    #     items = groups[main_fk]
+    #     # 只要这一组里存在一个未 already_exists_in_sub，就插入主图块
+    #     if all((a.get("already_exists_in_sub", False) for _fk, a in items)):
+    #         continue
+    #     insert_jobs.append((p_i, main_fk))
+
+    # # 倒序插入，避免插入段落导致后续索引偏移
+    # fig_insert_reports = []
+    # for p_i, main_fk in sorted(insert_jobs, key=lambda x: x[0], reverse=True):
+    #     rep = _insert_main_figure_block_after_paragraph(doc2, p_i, main_fk, groups[main_fk], work_dir)
+    #     fig_insert_reports.append(rep)
+
+
+
+
+
+
+
     doc2 = Document(step2_no_tables)
 
     # 将 Figure 资产按主图分组
     groups = _group_fig_assets_by_main(fig_assets or {})
 
-    # 找每个主图在文中“首次出现段落位置”：取其所有子图 key 命中的最小段落号
+    # ---------- Results范围定位 + “小段标题”识别（支持纯正文加粗） ----------
+    def _norm(s: str) -> str:
+        return re.sub(r"\s+", " ", (s or "")).strip().lower()
+
+    def _find_results_range(paragraphs):
+        """
+        返回 (results_start_idx, results_end_idx_exclusive)
+        - start: 标题为 Results / 结果 的那一段的下一段开始
+        - end: 下一个顶级板块标题（如 Discussion/讨论/Conclusion...）出现的位置；若无则到文末
+        """
+        results_title_idx = None
+        for i, p in enumerate(paragraphs):
+            t = _norm(p.text)
+            # 只匹配“单独一行”的 Results/结果（避免匹配到 'Results are expressed...'）
+            if t in ("results", "结果"):
+                results_title_idx = i
+                break
+
+        if results_title_idx is None:
+            # 没有 Results：退化为全文
+            return 0, len(paragraphs)
+
+        start = results_title_idx + 1
+
+        end = len(paragraphs)
+        stop_titles = {"discussion", "讨论", "conclusion", "conclusions", "结论", "总结"}
+        for j in range(start, len(paragraphs)):
+            t = _norm(paragraphs[j].text)
+            if t in stop_titles:
+                end = j
+                break
+
+        return start, end
+
+    def _is_section_heading(paragraph) -> bool:
+        """
+        判断是否“小段标题”：
+        1) style 含 Heading（最稳）
+        2) 或者：该段落文本主要为加粗（纯正文加粗标题）
+        3) 再兜底：短句 + 不以句号结尾
+        """
+        style_name = (getattr(paragraph.style, "name", "") or "").lower()
+        if "heading" in style_name:
+            return True
+
+        text = (paragraph.text or "").strip()
+        if not text:
+            return False
+
+        # 2) 纯正文加粗标题识别：统计非空 runs 的加粗比例
+        runs = [r for r in (paragraph.runs or []) if (r.text or "").strip()]
+        if runs:
+            bold_cnt = 0
+            for r in runs:
+                if r.bold is True:
+                    bold_cnt += 1
+            bold_ratio = bold_cnt / len(runs)
+
+            if bold_ratio >= 0.8:
+                # 过滤 'Figure 2A' 这类
+                if not re.match(r"(?i)^\s*figure\s+\w+", text):
+                    return True
+
+        # 3) 兜底：短句且不以句号结尾
+        if len(text) <= 120 and not re.search(r"[\.。]$", text):
+            if len(text.split()) <= 20:
+                # 过滤常见正文开头句式（按需增补）
+                if not re.match(r"(?i)^(in this study|to evaluate|to investigate|we |data were )", text):
+                    return True
+
+        return False
+
+    results_start, results_end = _find_results_range(doc2.paragraphs)
+
+    # 找到 Results 内每个“小段标题”索引，并构建小段边界
+    # sections: [(heading_idx, body_start_idx, body_end_idx_exclusive)]
+    heading_idxs = [i for i in range(results_start, results_end) if _is_section_heading(doc2.paragraphs[i])]
+    sections = []
+    if heading_idxs:
+        for k, h_i in enumerate(heading_idxs):
+            body_start = h_i + 1
+            body_end = heading_idxs[k + 1] if k + 1 < len(heading_idxs) else results_end
+            sections.append((h_i, body_start, body_end))
+    else:
+        # Results 没有可识别标题：整体视作一个 section
+        sections.append((results_start - 1, results_start, results_end))
+
+    def _last_nonempty_par_idx(start: int, end_excl: int) -> int:
+        """在 [start, end_excl) 内从后往前找最后一个非空段落索引；找不到则返回 start-1"""
+        for i in range(end_excl - 1, start - 1, -1):
+            if (doc2.paragraphs[i].text or "").strip():
+                return i
+        return start - 1
+
+    # Results兜底插入点：Results最后一个非空段落之后
+    results_fallback_insert_pos = _last_nonempty_par_idx(results_start, results_end)
+    if results_fallback_insert_pos < 0:
+        results_fallback_insert_pos = max(results_start - 1, 0)
+    # ---------- 结束：Results范围定位 + section识别 ----------
+
+
+    # ---------- 从 Results 扫描定位，插到“下一小标题的上一行”（本小段末尾） ----------
+    # first_pos_main: 主图 -> 插入到哪个段落之后 (after_idx)
     first_pos_main: Dict[str, int] = {}
+
     for main_fk, items in groups.items():
-        best = None
+        best_after_idx = None
+
         for fk, _asset in items:
-            # fk 多为 Figure 10A，不需要(?![A-Z])；但保留原逻辑兼容无后缀的 Figure 10
+            # fk 多为 Figure 10A；兼容无后缀的 Figure 10
             if re.match(r"(?i)^Figure\s+S?\d+$", fk):
                 pat = re.compile(re.escape(fk) + r"(?![A-Z])")
             else:
                 pat = re.compile(re.escape(fk))
 
-            # 从头扫描段落，找到首次出现的位置
-            for p_i, p in enumerate(doc2.paragraphs):
-                t = p.text or ""
+            # 只在 Results 范围内扫描
+            hit_paragraph_idx = None
+            for p_i in range(results_start, results_end):
+                t = doc2.paragraphs[p_i].text or ""
                 if pat.search(t):
-                    best = p_i if best is None else min(best, p_i)
+                    hit_paragraph_idx = p_i
                     break
-        if best is not None:
-            first_pos_main[main_fk] = best
+
+            if hit_paragraph_idx is None:
+                continue
+
+            # 命中 -> 找所属 section，并把插入点定到该 section 的末尾（下一小标题上一行）
+            chosen_after_idx = None
+            for (h_i, body_start, body_end) in sections:
+                if body_start <= hit_paragraph_idx < body_end:
+                    last_body_idx = _last_nonempty_par_idx(body_start, body_end)
+                    chosen_after_idx = last_body_idx if last_body_idx >= body_start else (body_end - 1)
+                    break
+
+            if chosen_after_idx is None:
+                chosen_after_idx = results_fallback_insert_pos
+
+            best_after_idx = chosen_after_idx if best_after_idx is None else min(best_after_idx, chosen_after_idx)
+
+        # Results 内完全找不到引用：直接放 Results 板块最后
+        if best_after_idx is None:
+            best_after_idx = results_fallback_insert_pos
+
+        first_pos_main[main_fk] = best_after_idx
+
 
     # 生成插入任务列表：需要插入的主图（已存在于 sub 的则跳过）
     insert_jobs: List[Tuple[int, str]] = []
-    for main_fk, p_i in first_pos_main.items():
+    for main_fk, after_idx in first_pos_main.items():
         items = groups[main_fk]
-        # 只要这一组里存在一个未 already_exists_in_sub，就插入主图块
         if all((a.get("already_exists_in_sub", False) for _fk, a in items)):
             continue
-        insert_jobs.append((p_i, main_fk))
+        insert_jobs.append((after_idx, main_fk))
 
-    # 倒序插入，避免插入段落导致后续索引偏移
+    # 同一小段内多个主图：按 Figure 1,2,3 顺序插入（同 after_idx 排序）
+    def _fig_sort_key(fig_label: str):
+        m = re.match(r"(?i)figure\s+(s?)\s*(\d+)", (fig_label or "").strip())
+        if not m:
+            return (1, 10**9, fig_label)
+        is_supp = 1 if m.group(1).lower() == "s" else 0  # 正文图优先于补充图（可调整）
+        num = int(m.group(2))
+        return (is_supp, num, fig_label)
+
+    # 倒序插入避免索引漂移；同一插入点内按 Figure 编号升序
     fig_insert_reports = []
-    for p_i, main_fk in sorted(insert_jobs, key=lambda x: x[0], reverse=True):
-        rep = _insert_main_figure_block_after_paragraph(doc2, p_i, main_fk, groups[main_fk], work_dir)
+    for after_idx, main_fk in sorted(
+        insert_jobs,
+        key=lambda x: (x[0], _fig_sort_key(x[1])),
+        reverse=True
+    ):
+        rep = _insert_main_figure_block_after_paragraph(
+            doc2, after_idx, main_fk, groups[main_fk], work_dir
+        )
         fig_insert_reports.append(rep)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
 
     doc2.save(step3_with_figs)
 

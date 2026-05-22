@@ -176,10 +176,73 @@ def _deduce_ext_from_partname(partname: str) -> str:
     return e or "bin"
 
 
+# def _extract_from_docx(docx_path: str, figure_raw_dir: str) -> List[Dict[str, Any]]:
+#     """
+#     按“图片所在段落的下一段 caption”命名并保存到 figure_raw_dir/Figures
+#     """
+#     figures_dir = _ensure_figures_dir(figure_raw_dir)
+#     doc = Document(docx_path)
+
+#     idx: List[Dict[str, Any]] = []
+
+#     paragraphs = list(doc.paragraphs)
+#     for i, p in enumerate(paragraphs):
+#         if not _paragraph_has_image(p):
+#             continue
+
+#         # caption：下一段文本（按你的需求）
+#         caption = paragraphs[i + 1].text.strip() if i + 1 < len(paragraphs) else ""
+#         token = _parse_caption_to_fig_token(caption)
+
+#         rids = _extract_rId_list_from_paragraph(p)
+#         for k, rid in enumerate(rids):
+#             rel = doc.part.rels.get(rid)
+#             if not rel or rel.reltype != RT.IMAGE:
+#                 continue
+
+#             img_part = rel.target_part
+#             data = img_part.blob
+#             ext = _deduce_ext_from_partname(img_part.partname)
+
+#             # 文件名策略：
+#             # 1) token 存在：Figure_1 / Figure_S1
+#             # 2) token 不存在：Image_<段落序号>_<k>
+#             if token:
+#                 base_name = token
+#             else:
+#                 base_name = f"Image_{i+1}_{k+1}"
+
+#             # 同一个 Figure 可能多张子图：追加 _2/_3
+#             # 注意：如果 token 存在且 rids >1，追加序号避免覆盖
+#             suffix = f"_{k+1}" if (token and len(rids) > 1) else ""
+#             save_name = f"{base_name}{suffix}.{ext}"
+#             save_path = os.path.join(figures_dir, save_name)
+
+#             # 若重名，追加内容hash
+#             if os.path.exists(save_path):
+#                 h = hashlib.md5(data).hexdigest()[:10]
+#                 save_name = f"{base_name}{suffix}_{h}.{ext}"
+#                 save_path = os.path.join(figures_dir, save_name)
+
+#             with open(save_path, "wb") as f:
+#                 f.write(data)
+
+#             pinfo = _parse_fig_from_name(save_name)
+#             idx.append({
+#                 "name": save_name,
+#                 "path": save_path,
+#                 "ext": ext,
+#                 "num": pinfo["num"],
+#                 "supplementary": pinfo["supplementary"],
+#                 "lower": pinfo["lower"],
+#             })
+
+#     return idx
 def _extract_from_docx(docx_path: str, figure_raw_dir: str) -> List[Dict[str, Any]]:
     """
-    按“图片所在段落的下一段 caption”命名并保存到 figure_raw_dir/Figures
+    按“图片紧接着的 caption”命名并保存到 figure_raw_dir/Figures
     """
+
     figures_dir = _ensure_figures_dir(figure_raw_dir)
     doc = Document(docx_path)
 
@@ -190,8 +253,36 @@ def _extract_from_docx(docx_path: str, figure_raw_dir: str) -> List[Dict[str, An
         if not _paragraph_has_image(p):
             continue
 
-        # caption：下一段文本（按你的需求）
-        caption = paragraphs[i + 1].text.strip() if i + 1 < len(paragraphs) else ""
+        # ================== 修改部分 ==================
+        caption = ""
+        text_after_image = ""
+        has_seen_image = False
+        
+        # 1. 遍历当前段落的 run，剥离出图片前后的文字
+        for run in p.runs:
+            # 通过底层 XML 判断该 run 是否包含图片 (w:drawing 或 v:shape/imagedata)
+            xml_str = run._element.xml
+            if '<w:drawing' in xml_str or '<v:shape' in xml_str or '<v:imagedata' in xml_str:
+                has_seen_image = True
+                text_after_image = "" # 遇到新图片则清空，确保抓取的是段落内【最后一张图片】后的文字
+            else:
+                if has_seen_image:
+                    text_after_image += run.text
+
+        text_after_image = text_after_image.strip()
+
+        # 2. 如果当前段落图片后面有文字（即文字B），则作为 caption
+        if text_after_image:
+            caption = text_after_image
+        else:
+            # 3. 如果当前段落图片后没有文字，则去寻找下一个非空段落
+            for j in range(i + 1, len(paragraphs)):
+                next_text = paragraphs[j].text.strip()
+                if next_text:
+                    caption = next_text
+                    break
+        # ==============================================
+
         token = _parse_caption_to_fig_token(caption)
 
         rids = _extract_rId_list_from_paragraph(p)
@@ -204,21 +295,15 @@ def _extract_from_docx(docx_path: str, figure_raw_dir: str) -> List[Dict[str, An
             data = img_part.blob
             ext = _deduce_ext_from_partname(img_part.partname)
 
-            # 文件名策略：
-            # 1) token 存在：Figure_1 / Figure_S1
-            # 2) token 不存在：Image_<段落序号>_<k>
             if token:
                 base_name = token
             else:
                 base_name = f"Image_{i+1}_{k+1}"
 
-            # 同一个 Figure 可能多张子图：追加 _2/_3
-            # 注意：如果 token 存在且 rids >1，追加序号避免覆盖
             suffix = f"_{k+1}" if (token and len(rids) > 1) else ""
             save_name = f"{base_name}{suffix}.{ext}"
             save_path = os.path.join(figures_dir, save_name)
 
-            # 若重名，追加内容hash
             if os.path.exists(save_path):
                 h = hashlib.md5(data).hexdigest()[:10]
                 save_name = f"{base_name}{suffix}_{h}.{ext}"

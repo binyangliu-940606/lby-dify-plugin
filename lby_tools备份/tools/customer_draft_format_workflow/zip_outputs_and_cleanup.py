@@ -62,20 +62,20 @@ def zip_outputs_and_cleanup(
     # 打包结构：
     # /Final.docx（最终文件）
     # /Table.docx
-    # /Figure/*
+    # /Figures/*
     with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as z:
         # 最终 docx：统一命名 Final.docx（或你也可以用原文件名）
         z.write(final_docx_blue_path, arcname=f"实验方案修改({order_id})-AI已修改格式.docx")
 
         # Table.docx 固定命名
-        z.write(table_docx_path, arcname="Table.docx")
+        z.write(table_docx_path, arcname="Tables.docx")
 
-        # Figure 文件夹
+        # Figures 文件夹
         for base, _, files in os.walk(final_figure_dir):
             for fn in files:
                 fp = os.path.join(base, fn)
                 rel = os.path.relpath(fp, final_figure_dir)
-                z.write(fp, arcname=os.path.join("Figure", rel))
+                z.write(fp, arcname=os.path.join("Figures", rel))
 
     zip_bytes = buf.getvalue()
 

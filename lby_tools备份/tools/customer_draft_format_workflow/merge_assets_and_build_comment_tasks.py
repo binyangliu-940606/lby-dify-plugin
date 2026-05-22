@@ -1,10 +1,11 @@
 import os
 import json
+import re
 
 from collections.abc import Generator
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
-from typing import Dict, Any, List, Union, Optional
+from typing import Dict, Any, List, Union, Optional, Tuple
 from .apply_changes import apply_all_changes
 from .blue_highlight_references_v3 import blue_highlight_references_v3
 from .zip_outputs_and_cleanup import zip_outputs_and_cleanup
@@ -175,15 +176,57 @@ def merge_assets_and_build_comment_tasks(
     table_assets: Dict[str, Any] = {}
     comment_tasks: List[Dict[str, Any]] = []
 
+    def split_trailing_upper(s: str) -> Tuple[str, str, bool]:
+        s = s.strip()
+        m = re.fullmatch(r"(.*?)([A-Z])", s)
+        if not m:
+            return "", "", False
+        return m.group(1), m.group(2), True
+
     # 1) 图：合并图题/图注 + 图片路径
     for fk in normalized_fig_keys or []:
         leg = (fig_legends or {}).get(fk, {}) or {}
         fill = (fig_legend_fill or {}).get(fk, {}) or {}
+        # leg = (fig_legends or {}).get(strip_last_letter_if_endswith_letter(fk), {}) or {}
+        # fill = (fig_legend_fill or {}).get(strip_last_letter_if_endswith_letter(fk), {}) or {}
 
         # title = (leg.get("title") or fill.get("title") or "").strip()
         # caption = (leg.get("caption") or fill.get("caption") or "").strip()
         title = (fill.get("title") or leg.get("title") or  "").strip()
         caption = (fill.get("caption") or leg.get("caption") or "").strip()
+
+        #兼容此种情况
+        # "fig_legends": {
+        #     "Figure 2": {
+        #       "title": "Characterization of the chemical structure of nanomaterials.",
+        #       "caption": "(A) Particle size distribution of PAMAM; (B) Particle size distribution of PAMAM/siTLR4 complexes; (C) Particle size distribution of SeNPs; (D) Gel electrophoresis of PAMAM/siTLR4; (E) TEM image of PAMAM/siTLR4 complex; (F) Zeta potential of SeNPs, PAMAM, and PAMAM/siTLR4; (G) NMR spectra of HA and HA-CHO; (H) Infrared spectra of HA and HA-CHO; (I) Gelation time of hydrogel formed by mixing different concentrations of PAMAM (wt%) and 5% (wt%) HA-CHO in equal volumes; (J) Relationship between G', G'' and time for different hydrogel materials; (K) Frequency-dependent behavior of G' and G'' in hydrogel samples; (L) Mechanical stress-strain responses of hydrogels with different formulations.",
+        #       "caption_by_part": {
+        #         "A": "Particle size distribution of PAMAM;",
+        #         "B": "Particle size distribution of PAMAM/siTLR4 complexes;",
+        #         "C": "Particle size distribution of SeNPs;",
+        #         "D": "Gel electrophoresis of PAMAM/siTLR4;",
+        #         "E": "TEM image of PAMAM/siTLR4 complex;",
+        #         "F": "Zeta potential of SeNPs, PAMAM, and PAMAM/siTLR4;",
+        #         "G": "NMR spectra of HA and HA-CHO;",
+        #         "H": "Infrared spectra of HA and HA-CHO;",
+        #         "I": "Gelation time of hydrogel formed by mixing different concentrations of PAMAM (wt%) and 5% (wt%) HA-CHO in equal volumes;",
+        #         "J": "Relationship between G', G'' and time for different hydrogel materials;",
+        #         "K": "Frequency-dependent behavior of G' and G'' in hydrogel samples;",
+        #         "L": "Mechanical stress-strain responses of hydrogels with different formulations."
+        #       }
+        first_key,sub_key,is_sun = split_trailing_upper(fk)
+        if is_sun:
+            if title == '':
+                leg = (fig_legends or {}).get(first_key, {}) or {}
+                title = (leg.get("title") or  "").strip()
+            
+            if caption == '':
+                leg = (fig_legends or {}).get(first_key, {}) or {}
+                if 'caption_by_part' in leg:
+                    leg_caption_by_part = leg.get('caption_by_part')
+                    if sub_key in leg_caption_by_part:
+                        caption = (leg_caption_by_part.get(sub_key) or  "").strip()
+
 
         match = figure_match_map.get(fk)
         img_path = match.get("path") if isinstance(match, dict) else None
@@ -216,6 +259,7 @@ def merge_assets_and_build_comment_tasks(
                     "anchor": fk,
                     "text": f"未在原稿与附件中找到对应图片文件：{fk}"
                 })
+
 
     def clean_2d_list_by_header(data):
         """

@@ -2,13 +2,13 @@ identity:
   name: "prepare_workspace"
   author: "lby"
   label:
-    en_US: "把文件保存到本地统一路径01"
-    zh_Hans: "把文件保存到本地统一路径01"
+    en_US: "把文件保存到本地统一路径02"
+    zh_Hans: "把文件保存到本地统一路径02"
     pt_BR: "prepare_workspace"
 description:
   human:
-    en_US: "把文件保存到本地统一路径01"
-    zh_Hans: "把文件保存到本地统一路径01"
+    en_US: "把文件保存到本地统一路径02"
+    zh_Hans: "把文件保存到本地统一路径02"
     pt_BR: "prepare_workspace"
   llm: "prepare_workspace"
 parameters:

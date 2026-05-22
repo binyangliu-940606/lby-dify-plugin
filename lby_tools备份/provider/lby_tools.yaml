@@ -28,6 +28,9 @@ tools:
   - tools/customer_draft_format_workflow/merge_assets_and_build_comment_tasks.yaml
   - tools/customer_draft_format_workflow/extract_docx_paras_and_tables_ooxml.yaml
   - tools/customer_draft_format_workflow/extract_reference_section_and_citations.yaml
+  - tools/AiRewriteRemoveTraceWorkflow/parse_docx_from_url.yaml
+  - tools/AiRewriteRemoveTraceWorkflow/apply_rewrites_to_docx.yaml
+  - tools/simulated_data_matrix_workflow/get_recompute.yaml
 extra:
   python:
     source: provider/lby_tools.py

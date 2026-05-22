@@ -1,0 +1,28 @@
+identity:
+  name: "get_recompute"
+  author: "lby"
+  label:
+    en_US: "获取recompute"
+    zh_Hans: "获取recompute"
+    pt_BR: "get_recompute"
+description:
+  human:
+    en_US: "获取recompute"
+    zh_Hans: "获取recompute"
+    pt_BR: "get_recompute"
+  llm: "get_recompute"
+parameters:
+  - name: payload_json
+    type: string
+    required: true
+    label:
+      en_US: payload_json
+      zh_Hans: json数据
+    human_description:
+      en_US: "payload_json"
+      zh_Hans: "json数据"
+    llm_description: "payload_json"
+    form: llm
+extra:
+  python:
+    source: tools/simulated_data_matrix_workflow/get_recompute.py

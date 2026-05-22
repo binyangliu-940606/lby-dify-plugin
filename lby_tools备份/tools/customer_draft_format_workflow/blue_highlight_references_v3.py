@@ -149,17 +149,53 @@ def _colorize_paragraph_ranges(p: Paragraph, ranges: List[Tuple[int, int]]):
             p.runs[ri].font.color.rgb = BLUE
 
 
+# def _find_all_occurrences(text: str, needle: str) -> List[Tuple[int, int]]:
+#     out = []
+#     if not needle:
+#         return out
+#     start = 0
+#     while True:
+#         idx = text.find(needle, start)
+#         if idx == -1:
+#             break
+#         out.append((idx, idx + len(needle)))
+#         start = idx + len(needle)
+#     return out
+
 def _find_all_occurrences(text: str, needle: str) -> List[Tuple[int, int]]:
-    out = []
+    """
+    默认按 needle 精确匹配返回范围；
+    若 needle 命中位置前一字符是 '(' 或 '（'，且括号内从该位置到闭括号的长度<=15，
+    则直接返回括号内该段范围（不做正则解析）。
+    """
+    out: List[Tuple[int, int]] = []
     if not needle:
         return out
+
     start = 0
     while True:
         idx = text.find(needle, start)
         if idx == -1:
             break
+
+        # 命中前是左括号：尝试取括号内范围
+        if idx > 0 and text[idx - 1] in ("(", "（"):
+            r1 = text.find(")", idx)
+            r2 = text.find("）", idx)
+            rights = [i for i in (r1, r2) if i != -1]
+            if rights:
+                end_bracket = min(rights)
+                inside_len = end_bracket - idx  # 从 Figure... 到闭括号前
+
+                if inside_len <= 30:
+                    out.append((idx, end_bracket))  # 不包含闭括号
+                    start = end_bracket
+                    continue
+
+        # 否则按原逻辑
         out.append((idx, idx + len(needle)))
         start = idx + len(needle)
+
     return out
 
 

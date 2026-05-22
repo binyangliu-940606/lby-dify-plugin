@@ -26,9 +26,17 @@ class LbyToolsTool(Tool):
             "pmid_comment_tasks": pmid_info["pmid_comment_tasks"],
         })
 
-# 编号制引用： [12] (12) 【12】
-CIT_PAT = re.compile(r"(\[\s*\d+\s*\]|\(\s*\d+\s*\)|【\s*\d+\s*】)")
+# # 编号制引用： [12] (12) 【12】
+# CIT_PAT = re.compile(r"(\[\s*\d+\s*\]|【\s*\d+\s*】)")
 
+# 提取 [] 或 【】 内部“只由数字和分隔符组成”的编号引用
+# 允许的连接符：空格、逗号(,，)、顿号、分号(;；)、斜杠(/)、连字符(-–—) 等
+CIT_PAT = re.compile(
+    r"(\[\s*\d[\d\s,，、;；/.\-–—]*\s*\]|\u3010\s*\d[\d\s,，、;；/.\-–—]*\s*\u3011)"
+)
+
+# examples:
+# [1,2,3]  [1-3]  [1/2/3]  【12】 【1，2；3-5/7】
 # 参考文献区标题（常见）
 REF_HEAD_PAT = re.compile(r"(?i)^\s*(references|reference|参考文献)\s*$")
 
