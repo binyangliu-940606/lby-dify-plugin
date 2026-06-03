@@ -1,0 +1,28 @@
+identity:
+  name: "wb_mw_docx_writeback"
+  author: "lby"
+  label:
+    en_US: "将数据写至word(WB_MW)"
+    zh_Hans: "将数据写至word(WB_MW)"
+    pt_BR: "wb_mw_docx_writeback"
+description:
+  human:
+    en_US: "将数据写至word(WB_MW)"
+    zh_Hans: "将数据写至word(WB_MW)"
+    pt_BR: "wb_mw_docx_writeback"
+  llm: "wb_mw_docx_writeback"
+parameters:
+  - name: payload_json
+    type: string
+    required: true
+    label:
+      en_US: payload_json
+      zh_Hans: 参数信息
+    human_description:
+      en_US: "payload_json"
+      zh_Hans: "参数信息"
+    llm_description: "payload_json"
+    form: llm
+extra:
+  python:
+    source: tools/wbMwAutoGenWorkflow/wb_mw_docx_writeback.py

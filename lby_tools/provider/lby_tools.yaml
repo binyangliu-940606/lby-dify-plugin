@@ -33,6 +33,10 @@ tools:
   - tools/AiRewriteRemoveTraceWorkflow/apply_rewrites_to_docx_v2.yaml
   - tools/simulated_data_matrix_workflow/get_recompute.yaml
   - tools/aiAuthorInfoFormatWorkflow/apply_final_data_to_docx.yaml
+  - tools/aiAuthorInfoFormatWorkflow/docx_url_to_text.yaml
+  - tools/wbMwAutoGenWorkflow/wb_mw_docx_writeback.yaml
+
+  
 extra:
   python:
     source: provider/lby_tools.py

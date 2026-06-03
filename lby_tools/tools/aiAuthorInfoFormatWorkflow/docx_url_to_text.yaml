@@ -1,0 +1,28 @@
+identity:
+  name: "docx_url_to_text"
+  author: "lby"
+  label:
+    en_US: "文档内容提取"
+    zh_Hans: "文档内容提取"
+    pt_BR: "docx_url_to_text"
+description:
+  human:
+    en_US: "修订信息会导致文本提取失效"
+    zh_Hans: "修订信息会导致文本提取失效"
+    pt_BR: "docx_url_to_text"
+  llm: "docx_url_to_text"
+parameters:
+  - name: file_url
+    type: string
+    required: true
+    label:
+      en_US: file_url
+      zh_Hans: 文档链接
+    human_description:
+      en_US: "file_url"
+      zh_Hans: "文档链接"
+    llm_description: "file_url"
+    form: llm
+extra:
+  python:
+    source: tools/aiAuthorInfoFormatWorkflow/docx_url_to_text.py
