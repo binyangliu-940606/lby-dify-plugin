@@ -35,8 +35,8 @@ tools:
   - tools/aiAuthorInfoFormatWorkflow/apply_final_data_to_docx.yaml
   - tools/aiAuthorInfoFormatWorkflow/docx_url_to_text.yaml
   - tools/wbMwAutoGenWorkflow/wb_mw_docx_writeback.yaml
-
-  
+  - tools/wbMwAutoGenWorkflow/wb_mw_get_docx_img.yaml
+  - tools/wbMwAutoGenWorkflow/wb_mw_docx.yaml
 extra:
   python:
     source: provider/lby_tools.py

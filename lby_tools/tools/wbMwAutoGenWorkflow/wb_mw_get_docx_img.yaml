@@ -1,0 +1,28 @@
+identity:
+  name: "wb_mw_get_docx_img"
+  author: "lby"
+  label:
+    en_US: "获取word文档图片"
+    zh_Hans: "获取word文档图片"
+    pt_BR: "wb_mw_get_docx_img"
+description:
+  human:
+    en_US: "获取word文档图片"
+    zh_Hans: "获取word文档图片"
+    pt_BR: "wb_mw_get_docx_img"
+  llm: "wb_mw_get_docx_img"
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: url
+      zh_Hans: 文档链接
+    human_description:
+      en_US: "url"
+      zh_Hans: "文档链接"
+    llm_description: "url"
+    form: llm
+extra:
+  python:
+    source: tools/wbMwAutoGenWorkflow/wb_mw_get_docx_img.py

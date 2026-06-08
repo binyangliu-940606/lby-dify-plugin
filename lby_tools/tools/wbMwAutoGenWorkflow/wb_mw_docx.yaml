@@ -1,0 +1,28 @@
+identity:
+  name: "wb_mw_docx"
+  author: "lby"
+  label:
+    en_US: "产生单独分子量文件"
+    zh_Hans: "产生单独分子量文件"
+    pt_BR: "wb_mw_docx"
+description:
+  human:
+    en_US: "产生单独分子量文件"
+    zh_Hans: "产生单独分子量文件"
+    pt_BR: "wb_mw_docx"
+  llm: "wb_mw_docx"
+parameters:
+  - name: payload_json
+    type: string
+    required: true
+    label:
+      en_US: payload_json
+      zh_Hans: 参数信息
+    human_description:
+      en_US: "payload_json"
+      zh_Hans: "参数信息"
+    llm_description: "payload_json"
+    form: llm
+extra:
+  python:
+    source: tools/wbMwAutoGenWorkflow/wb_mw_docx.py
