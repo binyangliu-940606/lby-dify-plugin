@@ -204,7 +204,7 @@ def _hyperlink_run_text_is_redundant_url(t: str, new_canon: set[str]) -> bool:
     return False
 
 
-def _iter_w_t_document_order(paragraph) -> Generator:
+def _iter_w_t_document_order(paragraph):
     """段内文档顺序的所有 w:t（含超链、域、修订等），与 Word 可见字符顺序一致。"""
     yield from paragraph._p.iter(qn("w:t"))
 
@@ -231,7 +231,7 @@ def _remove_wt_char_range(paragraph, start: int, end: int) -> None:
         t.text = tx[:lo] + tx[hi:]
 
 
-def _iter_w_r_elements_document_order(paragraph) -> Generator:
+def _iter_w_r_elements_document_order(paragraph):
     """
     段内文档顺序的 w:r（含 w:hyperlink 下的 run），与 Word 显示顺序一致。
     """
@@ -604,6 +604,37 @@ def payload_marks_document_title_row(item: dict | None) -> bool:
     )
 
 
+def paragraph_is_manual_bold_short_heading(paragraph) -> bool:
+    """
+    Protect section/subsection titles that were formatted as Normal + manual bold.
+
+    Some source files do not use Word Heading styles for subheadings. They keep
+    the paragraph style as Normal and only apply explicit bold to the whole run.
+    Those paragraphs should not go through the body bold-reset path.
+    """
+    if paragraph_is_heading_style(paragraph):
+        return False
+
+    text = (paragraph.text or "").strip()
+    if not text:
+        return False
+
+    # Keep this conservative so a mistakenly all-bold body paragraph is still cleaned.
+    if len(text) > 180:
+        return False
+    if len(re.findall(r"\S+", text)) > 24:
+        return False
+    if re.search(r"https?://|\(\s*10\.\d{4,9}/", text, flags=re.IGNORECASE):
+        return False
+    if text.endswith((".", "?", "!", ";", "。", "？", "！", "；")):
+        return False
+
+    visible_runs = [r for r in paragraph.runs if (r.text or "").strip()]
+    if not visible_runs:
+        return False
+    return all(r.bold is True for r in visible_runs)
+
+
 def reset_run_bold_off(run) -> None:
     """去掉 run 上的显式加粗（含东亚/复杂文种 w:bCs），不改变样式里其它字符格式。"""
     try:
@@ -621,7 +652,11 @@ def reset_run_bold_off(run) -> None:
 
 def reset_body_paragraph_run_bold(paragraph, item: dict | None = None) -> None:
     """非标题段：全文所有 run（含超链内）取消加粗，避免整段/半截继承粗体。"""
-    if paragraph_is_heading_style(paragraph) or payload_marks_document_title_row(item):
+    if (
+        paragraph_is_heading_style(paragraph)
+        or payload_marks_document_title_row(item)
+        or paragraph_is_manual_bold_short_heading(paragraph)
+    ):
         return
     for run in paragraph.runs:
         reset_run_bold_off(run)
